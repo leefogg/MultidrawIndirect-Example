@@ -27,32 +27,32 @@ namespace GLMultidrawIndirectExample
 
         private void generateGeometry()
         {
-            var gQuad = new[] {
+            var quadVertcies = new[] {
                 new Vector2(0.0f, 0.0f),
                 new Vector2(0.1f, 0.0f),
                 new Vector2(0.0f, 0.1f),
                 new Vector2(0.1f, 0.1f)
             };
-            var gIndex = new uint[] { 0, 1, 2, 1, 3, 2 };
+            var indexBuffer = new uint[] { 0, 1, 2, 1, 3, 2 };
 
             var vao = GL.GenVertexArray();
             GL.BindVertexArray(vao);
 
             //Create a vertex buffer object
             var vbo = GL.GenBuffer();
-            var vVertex = new float[]
+            var flattenedQuadVertcies = new float[]
             {
-                gQuad[0].X,
-                gQuad[0].Y,
-                gQuad[1].X,
-                gQuad[1].Y,
-                gQuad[2].X,
-                gQuad[2].Y,
-                gQuad[3].X,
-                gQuad[3].Y,
+                quadVertcies[0].X,
+                quadVertcies[0].Y,
+                quadVertcies[1].X,
+                quadVertcies[1].Y,
+                quadVertcies[2].X,
+                quadVertcies[2].Y,
+                quadVertcies[3].X,
+                quadVertcies[3].Y,
             };
             GL.BindBuffer(BufferTarget.ArrayBuffer, vbo);
-            GL.BufferData(BufferTarget.ArrayBuffer, vVertex.SizeInBytes(), vVertex, BufferUsageHint.StaticDraw);
+            GL.BufferData(BufferTarget.ArrayBuffer, flattenedQuadVertcies.SizeInBytes(), flattenedQuadVertcies, BufferUsageHint.StaticDraw);
 
             //Specify vertex attributes for the shader
             GL.EnableVertexAttribArray(0);
@@ -61,14 +61,14 @@ namespace GLMultidrawIndirectExample
             //Create an element buffer
             var ebo = GL.GenBuffer();
             GL.BindBuffer(BufferTarget.ElementArrayBuffer, ebo);
-            GL.BufferData(BufferTarget.ElementArrayBuffer, gIndex.SizeInBytes(), gIndex, BufferUsageHint.StaticDraw);
+            GL.BufferData(BufferTarget.ElementArrayBuffer, indexBuffer.SizeInBytes(), indexBuffer, BufferUsageHint.StaticDraw);
 
             //Generate draw commands
             var drawCommand = new DrawElementsIndirectData(6, 1, 0, 0, 0);
-            var vDrawCommands = Enumerable.Repeat(drawCommand, 100).ToArray(); // Draw the same quad 100 times
+            var drawCommands = Enumerable.Repeat(drawCommand, 100).ToArray(); // Draw the same quad 100 times
             var indirectBuffer = GL.GenBuffer();
             GL.BindBuffer(BufferTarget.DrawIndirectBuffer, indirectBuffer);
-            GL.BufferData(BufferTarget.DrawIndirectBuffer, vDrawCommands.SizeInBytes(), vDrawCommands, BufferUsageHint.StaticDraw);
+            GL.BufferData(BufferTarget.DrawIndirectBuffer, drawCommands.SizeInBytes(), drawCommands, BufferUsageHint.StaticDraw);
         }
 
         private int CompileShaders(string gVertexShaderSource, string gFragmentShaderSource)
@@ -133,8 +133,8 @@ namespace GLMultidrawIndirectExample
 
         private void setupShader()
         {
-            var gProgram = CompileShaders(File.ReadAllText("vertex.glsl"), File.ReadAllText("fragment.glsl"));
-            GL.UseProgram(gProgram);
+            var program = CompileShaders(File.ReadAllText("vertex.glsl"), File.ReadAllText("fragment.glsl"));
+            GL.UseProgram(program);
 
             // Create and bind UBO
             var uniformBuffer = GL.GenBuffer();
@@ -169,6 +169,7 @@ namespace GLMultidrawIndirectExample
         {
             for (var i = 0; i < numColors; i++)
                 positionsAndColours[numPositionOffsets + i] = (float)random.NextDouble();
+            // Update the whole UBO for code simplicity, but should only update the colours.
             GL.BufferData(BufferTarget.UniformBuffer, positionsAndColours.SizeInBytes(), positionsAndColours, BufferUsageHint.StaticDraw);
         }
 
