@@ -15,7 +15,9 @@ namespace GLMultidrawIndirectExample
     internal class Window : GameWindow
     {
         private int frameNumber;
-        private float[] colors = new float[4 * 100];
+        private const int numPositionOffsets = 4 * 100;
+        private const int numColors = 4 * 100;
+        private float[] positionsAndColours = new float[numPositionOffsets + numColors];
         private Random random = new Random();
 
         public Window(GameWindowSettings gameWindowSettings, NativeWindowSettings nativeWindowSettings) 
@@ -33,34 +35,22 @@ namespace GLMultidrawIndirectExample
             };
             var gIndex = new uint[] { 0, 1, 2, 1, 3, 2 };
 
-            var vVertex = new float[100 * 4 * 2];
-
-            var index = 0;
-            var xOffset = -0.95f;
-            var yOffset = 0.85f;
-            for (var i=0; i<10; i++)
-            {
-                for (var j=0; j<10; j++)
-                {
-                    for (var k=0; k<4; k++)
-                    {
-                        vVertex[index++] = gQuad[k].X + xOffset;
-                        vVertex[index++] = gQuad[k].Y + yOffset;
-                    }
-
-                    xOffset += 0.2f;
-                }
-
-                yOffset -= 0.2f;
-                xOffset = -0.95f;
-            }
-
-
             var vao = GL.GenVertexArray();
             GL.BindVertexArray(vao);
 
             //Create a vertex buffer object
             var vbo = GL.GenBuffer();
+            var vVertex = new float[]
+            {
+                gQuad[0].X,
+                gQuad[0].Y,
+                gQuad[1].X,
+                gQuad[1].Y,
+                gQuad[2].X,
+                gQuad[2].Y,
+                gQuad[3].X,
+                gQuad[3].Y,
+            };
             GL.BindBuffer(BufferTarget.ArrayBuffer, vbo);
             GL.BufferData(BufferTarget.ArrayBuffer, vVertex.SizeInBytes(), vVertex, BufferUsageHint.StaticDraw);
 
@@ -74,9 +64,8 @@ namespace GLMultidrawIndirectExample
             GL.BufferData(BufferTarget.ElementArrayBuffer, gIndex.SizeInBytes(), gIndex, BufferUsageHint.StaticDraw);
 
             //Generate draw commands
-            var vDrawCommands = new DrawElementsIndirectData[100];
-            for (uint i = 0; i < vDrawCommands.Length; i++)
-                vDrawCommands[i] = new DrawElementsIndirectData(6, 1, 0, i * 4, 0);
+            var drawCommand = new DrawElementsIndirectData(6, 1, 0, 0, 0);
+            var vDrawCommands = Enumerable.Repeat(drawCommand, 100).ToArray(); // Draw the same quad 100 times
             var indirectBuffer = GL.GenBuffer();
             GL.BindBuffer(BufferTarget.DrawIndirectBuffer, indirectBuffer);
             GL.BufferData(BufferTarget.DrawIndirectBuffer, vDrawCommands.SizeInBytes(), vDrawCommands, BufferUsageHint.StaticDraw);
@@ -150,16 +139,37 @@ namespace GLMultidrawIndirectExample
             // Create and bind UBO
             var uniformBuffer = GL.GenBuffer();
             GL.BindBuffer(BufferTarget.UniformBuffer, uniformBuffer);
-            GL.BindBufferRange(BufferRangeTarget.UniformBuffer, 0, uniformBuffer, (IntPtr)0, colors.SizeInBytes());
+            GL.BindBufferRange(BufferRangeTarget.UniformBuffer, 0, uniformBuffer, (IntPtr)0, positionsAndColours.SizeInBytes());
+
+            // Set PositionOffsets in UBO
+            var index = 0;
+            var xOffset = -0.95f;
+            var yOffset = 0.85f;
+            for (var i = 0; i < 10; i++)
+            {
+                for (var j = 0; j < 10; j++)
+                {
+                    positionsAndColours[index++] = xOffset;
+                    positionsAndColours[index++] = yOffset;
+                    // UBO's have to be vec4 aligned so add 2 padding floats
+                    positionsAndColours[index++] = 0;
+                    positionsAndColours[index++] = 0;
+
+                    xOffset += 0.2f;
+                }
+
+                yOffset -= 0.2f;
+                xOffset = -0.95f;
+            }
+
             updateColors();
         }
 
         private void updateColors()
         {
-            // Generate Random Colors
-            for (var i = 0; i < colors.Length; i++)
-                colors[i] = (float)random.NextDouble();
-            GL.BufferData(BufferTarget.UniformBuffer, colors.SizeInBytes(), colors, BufferUsageHint.StaticDraw);
+            for (var i = 0; i < numColors; i++)
+                positionsAndColours[numPositionOffsets + i] = (float)random.NextDouble();
+            GL.BufferData(BufferTarget.UniformBuffer, positionsAndColours.SizeInBytes(), positionsAndColours, BufferUsageHint.StaticDraw);
         }
 
         protected override void OnRenderFrame(FrameEventArgs args)
