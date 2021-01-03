@@ -14,6 +14,10 @@ namespace GLMultidrawIndirectExample
 {
     internal class Window : GameWindow
     {
+        private int frameNumber;
+        private float[] colors = new float[4 * 100];
+        private Random random = new Random();
+
         public Window(GameWindowSettings gameWindowSettings, NativeWindowSettings nativeWindowSettings) 
             : base(gameWindowSettings, nativeWindowSettings)
         {
@@ -143,27 +147,28 @@ namespace GLMultidrawIndirectExample
             var gProgram = CompileShaders(File.ReadAllText("vertex.glsl"), File.ReadAllText("fragment.glsl"));
             GL.UseProgram(gProgram);
 
-            var uniformBlock = GL.GetUniformBlockIndex(gProgram, "ObjectColours");
-            GL.UniformBlockBinding(gProgram, uniformBlock, 0);
-
-
-            // Generate Random Colors
-            var colors = new float[4 * 100];
-            var random = new Random();
-            for (var i=0; i<colors.Length; i++)
-                colors[i] = (float)random.NextDouble();
-
-            // Bind colors to a UBO
+            // Create and bind UBO
             var uniformBuffer = GL.GenBuffer();
             GL.BindBuffer(BufferTarget.UniformBuffer, uniformBuffer);
-            GL.BufferData(BufferTarget.UniformBuffer, sizeof(float) * 4 * 100, colors, BufferUsageHint.StaticDraw);
-            GL.BindBuffer(BufferTarget.UniformBuffer, 0);
-            GL.BindBufferRange(BufferRangeTarget.UniformBuffer, 0, uniformBuffer, (IntPtr)0, sizeof(float) * 4 * 100);
+            GL.BindBufferRange(BufferRangeTarget.UniformBuffer, 0, uniformBuffer, (IntPtr)0, colors.SizeInBytes());
+            updateColors();
+        }
+
+        private void updateColors()
+        {
+            // Generate Random Colors
+            for (var i = 0; i < colors.Length; i++)
+                colors[i] = (float)random.NextDouble();
+            GL.BufferData(BufferTarget.UniformBuffer, colors.SizeInBytes(), colors, BufferUsageHint.StaticDraw);
         }
 
         protected override void OnRenderFrame(FrameEventArgs args)
         {
             GL.Clear(ClearBufferMask.ColorBufferBit);
+
+            // Update colors (optional)
+            if (frameNumber % 60 == 0)
+                updateColors();
 
             GL.MultiDrawElementsIndirect(
                 PrimitiveType.Triangles, 
@@ -174,6 +179,7 @@ namespace GLMultidrawIndirectExample
             );
 
             SwapBuffers();
+            frameNumber++;
         }
 
         protected override void OnUpdateFrame(FrameEventArgs args)
