@@ -1,11 +1,14 @@
 ﻿#version 430 core
 
-out vec4 color;
+out vec3 color;
 in vec2 uv;
 flat in uint drawID;
-layout (binding = 0) uniform sampler2DArray textureArray;
+
+layout (std140) uniform ObjectColours {
+	vec3 Colors[100];
+};
 
 void main(void)
 {
-	color = texture(textureArray, vec3(uv.x,uv.y,drawID) );
+	color = Colors[drawID];
 }

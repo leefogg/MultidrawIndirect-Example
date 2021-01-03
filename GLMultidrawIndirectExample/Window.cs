@@ -78,38 +78,6 @@ namespace GLMultidrawIndirectExample
             GL.BufferData(BufferTarget.DrawIndirectBuffer, vDrawCommands.SizeInBytes(), vDrawCommands, BufferUsageHint.StaticDraw);
         }
 
-        private void generateArrayTexture()
-        {
-            var arrayTexture = GL.GenTexture();
-            GL.ActiveTexture(TextureUnit.Texture0);
-            GL.BindTexture(TextureTarget.Texture2DArray, arrayTexture);
-
-            GL.TexStorage3D(TextureTarget3d.Texture2DArray, 1, SizedInternalFormat.Rgba8, 1, 1, 100);
-
-            var random = new Random();
-            var color = new byte[4];
-            for (var i=0; i<100; i++)
-            {
-                random.NextBytes(color);
-
-                GL.TexSubImage3D(
-                    TextureTarget.Texture2DArray,
-                    0,
-                    0, 0, i,
-                    1, 1, 1,
-                    PixelFormat.Rgba,
-                    PixelType.UnsignedByte,
-                    color
-                );
-            }
-            var nearest = Enumerable.Repeat((int)TextureMinFilter.Nearest, 100).ToArray();
-            var clapToEdge = Enumerable.Repeat((int)TextureWrapMode.ClampToEdge, 100).ToArray();
-            GL.TexParameterI(TextureTarget.Texture2DArray, TextureParameterName.TextureMinFilter, nearest);
-            GL.TexParameterI(TextureTarget.Texture2DArray, TextureParameterName.TextureMagFilter, nearest);
-            GL.TexParameterI(TextureTarget.Texture2DArray, TextureParameterName.TextureWrapS, clapToEdge);
-            GL.TexParameterI(TextureTarget.Texture2DArray, TextureParameterName.TextureWrapT, clapToEdge);
-        }
-
         private int CompileShaders(string gVertexShaderSource, string gFragmentShaderSource)
         {
             var vertexShader = GL.CreateShader(ShaderType.VertexShader);
@@ -164,15 +132,34 @@ namespace GLMultidrawIndirectExample
 
         protected override void OnLoad()
         {
-            GL.ClearColor(1, 1, 1, 0);
+            setupShader();
+            generateGeometry();
 
+            GL.ClearColor(1, 1, 1, 0);
+        }
+
+        private void setupShader()
+        {
             var gProgram = CompileShaders(File.ReadAllText("vertex.glsl"), File.ReadAllText("fragment.glsl"));
             GL.UseProgram(gProgram);
 
-            generateGeometry();
-            generateArrayTexture();
-        }
+            var uniformBlock = GL.GetUniformBlockIndex(gProgram, "ObjectColours");
+            GL.UniformBlockBinding(gProgram, uniformBlock, 0);
 
+
+            // Generate Random Colors
+            var colors = new float[4 * 100];
+            var random = new Random();
+            for (var i=0; i<colors.Length; i++)
+                colors[i] = (float)random.NextDouble();
+
+            // Bind colors to a UBO
+            var uniformBuffer = GL.GenBuffer();
+            GL.BindBuffer(BufferTarget.UniformBuffer, uniformBuffer);
+            GL.BufferData(BufferTarget.UniformBuffer, sizeof(float) * 4 * 100, colors, BufferUsageHint.StaticDraw);
+            GL.BindBuffer(BufferTarget.UniformBuffer, 0);
+            GL.BindBufferRange(BufferRangeTarget.UniformBuffer, 0, uniformBuffer, (IntPtr)0, sizeof(float) * 4 * 100);
+        }
 
         protected override void OnRenderFrame(FrameEventArgs args)
         {
