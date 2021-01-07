@@ -15,10 +15,8 @@ namespace GLMultidrawIndirectExample
     internal class Window : GameWindow
     {
         private int frameNumber;
-        private const int numPositionOffsets = 4 * 100;
-        private const int numColors = 4 * 100;
-        private float[] positionsAndColours = new float[numPositionOffsets + numColors];
         private Random random = new Random();
+        private Vector4[] posAndColors = new Vector4[100 * 2];
 
         public Window(GameWindowSettings gameWindowSettings, NativeWindowSettings nativeWindowSettings) 
             : base(gameWindowSettings, nativeWindowSettings)
@@ -40,19 +38,9 @@ namespace GLMultidrawIndirectExample
 
             //Create a vertex buffer object
             var vbo = GL.GenBuffer();
-            var flattenedQuadVertcies = new float[]
-            {
-                quadVertcies[0].X,
-                quadVertcies[0].Y,
-                quadVertcies[1].X,
-                quadVertcies[1].Y,
-                quadVertcies[2].X,
-                quadVertcies[2].Y,
-                quadVertcies[3].X,
-                quadVertcies[3].Y,
-            };
+
             GL.BindBuffer(BufferTarget.ArrayBuffer, vbo);
-            GL.BufferData(BufferTarget.ArrayBuffer, flattenedQuadVertcies.SizeInBytes(), flattenedQuadVertcies, BufferUsageHint.StaticDraw);
+            GL.BufferData(BufferTarget.ArrayBuffer, quadVertcies.SizeInBytes(), quadVertcies, BufferUsageHint.StaticDraw);
 
             //Specify vertex attributes for the shader
             GL.EnableVertexAttribArray(0);
@@ -139,7 +127,7 @@ namespace GLMultidrawIndirectExample
             // Create and bind UBO
             var uniformBuffer = GL.GenBuffer();
             GL.BindBuffer(BufferTarget.UniformBuffer, uniformBuffer);
-            GL.BindBufferRange(BufferRangeTarget.UniformBuffer, 0, uniformBuffer, (IntPtr)0, positionsAndColours.SizeInBytes());
+            GL.BindBufferRange(BufferRangeTarget.UniformBuffer, 0, uniformBuffer, (IntPtr)0, posAndColors.SizeInBytes());
 
             // Set PositionOffsets in UBO
             var index = 0;
@@ -149,11 +137,7 @@ namespace GLMultidrawIndirectExample
             {
                 for (var j = 0; j < 10; j++)
                 {
-                    positionsAndColours[index++] = xOffset;
-                    positionsAndColours[index++] = yOffset;
-                    // UBO's have to be vec4 aligned so add 2 padding floats
-                    positionsAndColours[index++] = 0;
-                    positionsAndColours[index++] = 0;
+                    posAndColors[index++] = new Vector4(xOffset, yOffset, 0, 0);
 
                     xOffset += 0.2f;
                 }
@@ -167,10 +151,15 @@ namespace GLMultidrawIndirectExample
 
         private void updateColors()
         {
-            for (var i = 0; i < numColors; i++)
-                positionsAndColours[numPositionOffsets + i] = (float)random.NextDouble();
+            for (var i = 0; i < 100; i++)
+                posAndColors[100 + i] = new Vector4(
+                    (float)random.NextDouble(),
+                    (float)random.NextDouble(),
+                    (float)random.NextDouble(),
+                    (float)random.NextDouble()
+                );
             // Update the whole UBO for code simplicity, but should only update the colours.
-            GL.BufferData(BufferTarget.UniformBuffer, positionsAndColours.SizeInBytes(), positionsAndColours, BufferUsageHint.StaticDraw);
+            GL.BufferData(BufferTarget.UniformBuffer, posAndColors.SizeInBytes(), posAndColors, BufferUsageHint.StaticDraw);
         }
 
         protected override void OnRenderFrame(FrameEventArgs args)
