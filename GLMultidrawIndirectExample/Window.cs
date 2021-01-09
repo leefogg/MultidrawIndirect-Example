@@ -17,6 +17,7 @@ namespace GLMultidrawIndirectExample
         private int frameNumber;
         private Random random = new Random();
         private Vector4[] posAndColors = new Vector4[100 * 2];
+        private int uniformBuffer;
 
         public Window(GameWindowSettings gameWindowSettings, NativeWindowSettings nativeWindowSettings) 
             : base(gameWindowSettings, nativeWindowSettings)
@@ -125,8 +126,9 @@ namespace GLMultidrawIndirectExample
             GL.UseProgram(program);
 
             // Create and bind UBO
-            var uniformBuffer = GL.GenBuffer();
+            uniformBuffer = GL.GenBuffer();
             GL.BindBuffer(BufferTarget.UniformBuffer, uniformBuffer);
+            GL.NamedBufferData(uniformBuffer, posAndColors.SizeInBytes(), (IntPtr)0, BufferUsageHint.StreamRead);
             GL.BindBufferRange(BufferRangeTarget.UniformBuffer, 0, uniformBuffer, (IntPtr)0, posAndColors.SizeInBytes());
 
             // Set PositionOffsets in UBO
@@ -159,7 +161,7 @@ namespace GLMultidrawIndirectExample
                     (float)random.NextDouble()
                 );
             // Update the whole UBO for code simplicity, but should only update the colours.
-            GL.BufferData(BufferTarget.UniformBuffer, posAndColors.SizeInBytes(), posAndColors, BufferUsageHint.StaticDraw);
+            GL.NamedBufferSubData(uniformBuffer, (IntPtr)0, posAndColors.SizeInBytes(), posAndColors);
         }
 
         protected override void OnRenderFrame(FrameEventArgs args)
