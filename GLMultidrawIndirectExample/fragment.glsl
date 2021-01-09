@@ -1,4 +1,4 @@
-﻿#version 430 core
+﻿#version 420
 
 out vec4 color;
 in vec2 uv;
